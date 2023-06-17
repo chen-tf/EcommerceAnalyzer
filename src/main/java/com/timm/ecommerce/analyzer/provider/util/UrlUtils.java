@@ -23,4 +23,8 @@ public final class UrlUtils {
                        .filter(httpUrl -> httpUrl.pathSegments().size() > segment)
                        .map(httpUrl -> httpUrl.pathSegments().get(segment));
     }
+
+    public static String getHTTPSBaseUrl(String host) {
+        return String.format("https://%s/", host);
+    }
 }

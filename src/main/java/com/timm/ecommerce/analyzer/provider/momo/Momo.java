@@ -1,11 +1,17 @@
 package com.timm.ecommerce.analyzer.provider.momo;
 
+import static com.timm.ecommerce.analyzer.provider.momo.Constant.MOMO_DM_HOST;
+import static com.timm.ecommerce.analyzer.provider.momo.Constant.MOMO_HOST;
+import static com.timm.ecommerce.analyzer.provider.momo.Constant.MOMO_MOBILE_HOST;
+import static com.timm.ecommerce.analyzer.provider.util.UrlUtils.getHostFromUrl;
+import static com.timm.ecommerce.analyzer.provider.util.UrlUtils.getParameterAsString;
+import static com.timm.ecommerce.analyzer.provider.util.UrlUtils.getPathParameterAsString;
+
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.jsoup.Jsoup;
 
@@ -13,48 +19,25 @@ import com.timm.ecommerce.analyzer.provider.ProductInfo;
 import com.timm.ecommerce.analyzer.provider.ProductInfoProvider;
 import com.timm.ecommerce.analyzer.provider.ProductSource;
 import com.timm.ecommerce.analyzer.provider.ProductStatus;
-import com.timm.ecommerce.analyzer.provider.util.RetrofitUtils;
-import com.timm.ecommerce.analyzer.provider.util.UrlUtils;
 
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.OkHttpClient;
-import okhttp3.ResponseBody;
-import retrofit2.Retrofit;
 
 @Slf4j
 public class Momo extends ProductInfoProvider {
 
-    private final MomoMobileAPIService momoMobileAPIService;
-    private final MomoDMAPIService momoDMAPIService;
-
-    private static final String MOMO_HOST = "www.momoshop.com.tw";
-    private static final String MOMO_MOBILE_HOST = "m.momoshop.com.tw";
-    private static final String MOMO_DM_HOST = "momo.dm";
+    private final MomoDMAPIClient momoDMAPIClient;
+    private final MomoMobileAPIClient momoMobileAPIClient;
 
     private final ProductQueryStrategy shareLinkProductQueryStrategy;
     private final ProductQueryStrategy commonProductQueryStrategy;
 
-    public Momo(OkHttpClient httpClient) {
+    public Momo(MomoDMAPIClient momoDMAPIClient,
+                MomoMobileAPIClient momoMobileAPIClient) {
         super(Set.of(MOMO_HOST, MOMO_MOBILE_HOST, MOMO_DM_HOST));
-        momoMobileAPIService = createRetrofitAPIService(httpClient,
-                                                        MOMO_MOBILE_HOST,
-                                                        MomoMobileAPIService.class);
-        momoDMAPIService = createRetrofitAPIService(httpClient,
-                                                    MOMO_DM_HOST,
-                                                    MomoDMAPIService.class);
+        this.momoDMAPIClient = momoDMAPIClient;
+        this.momoMobileAPIClient = momoMobileAPIClient;
         shareLinkProductQueryStrategy = new ShareLinkProductQueryStrategy();
         commonProductQueryStrategy = new CommonProductQueryStrategy();
-    }
-
-    @NotNull
-    private static <T> T createRetrofitAPIService(OkHttpClient httpClient,
-                                                  String host,
-                                                  Class<T> service) {
-        return new Retrofit.Builder()
-                .baseUrl(String.format("https://%s/", host))
-                .client(httpClient)
-                .build()
-                .create(service);
     }
 
     @Override
@@ -67,7 +50,7 @@ public class Momo extends ProductInfoProvider {
                 .flatMap(queryResult -> parse(queryResult.iCodeOpt, queryResult.responseBodyOpt.get()));
     }
 
-    record ProductPage(Optional<String> iCodeOpt, Optional<ResponseBody> responseBodyOpt) {
+    record ProductPage(Optional<String> iCodeOpt, Optional<String> responseBodyOpt) {
     }
 
     @FunctionalInterface
@@ -79,14 +62,14 @@ public class Momo extends ProductInfoProvider {
 
         @Override
         public Optional<ProductPage> query(String urlString) {
-            final var shareCode = UrlUtils.getPathParameterAsString(urlString, 0);
+            final var shareCode = getPathParameterAsString(urlString, 0);
             if (shareCode.isEmpty()) {
                 log.error("can't find share code from the url:{}", urlString);
                 return Optional.empty();
             }
             return Optional.of(new ProductPage(
                     Optional.empty(),
-                    RetrofitUtils.execute(momoDMAPIService.getGoodInfo(shareCode.get()), log)
+                    momoDMAPIClient.getGoodInfo(shareCode.get())
             ));
         }
     }
@@ -95,32 +78,31 @@ public class Momo extends ProductInfoProvider {
 
         @Override
         public Optional<ProductPage> query(String urlString) {
-            final var iCodeOpt = UrlUtils.getParameterAsString(urlString, "i_code");
+            final var iCodeOpt = getParameterAsString(urlString, "i_code");
             if (iCodeOpt.isEmpty()) {
                 log.error("can't find i_code from the url:{}", urlString);
                 return Optional.empty();
             }
             return Optional.of(new ProductPage(
                     iCodeOpt,
-                    RetrofitUtils.execute(momoMobileAPIService.getGoodInfo(iCodeOpt.get()), log)
+                    momoMobileAPIClient.getGoodInfo(iCodeOpt.get())
             ));
         }
     }
 
     private static boolean isMomoShareLink(String urlString) {
-        return UrlUtils.getHostFromUrl(urlString)
-                       .filter(host -> host.equals(MOMO_DM_HOST))
-                       .isPresent();
+        return getHostFromUrl(urlString)
+                .filter(host -> host.equals(MOMO_DM_HOST))
+                .isPresent();
     }
 
-    private static Optional<ProductInfo> parse(Optional<String> iCodeOpt, ResponseBody responseBody) {
+    private static Optional<ProductInfo> parse(Optional<String> iCodeOpt, String responseBody) {
         try {
-            final var html = responseBody.string();
-            final var doc = Jsoup.parse(html);
+            final var doc = Jsoup.parse(responseBody);
             final var titleMeta = doc.selectFirst("meta[property=og:title]");
             final var priceMeta = doc.selectFirst("meta[property=product:price:amount]");
             final var availabilityMeta = doc.selectFirst("meta[property=product:availability]");
-            final var iCode = iCodeOpt.orElseGet(() -> matchICode(html));
+            final var iCode = iCodeOpt.orElseGet(() -> matchICode(responseBody));
             if (titleMeta == null || priceMeta == null || availabilityMeta == null || iCode == null) {
                 return Optional.empty();
             }

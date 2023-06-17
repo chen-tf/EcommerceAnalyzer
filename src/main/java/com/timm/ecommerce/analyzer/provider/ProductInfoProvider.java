@@ -13,9 +13,9 @@ public abstract class ProductInfoProvider {
     }
 
     public Optional<ProductInfo> retrieve(String urlString) {
-        final var host = getHostFromUrl(urlString);
-        return host.filter(this::isHostSupported)
-                   .flatMap(__ -> retrieveByUrlString(urlString));
+        return getHostFromUrl(urlString)
+                .filter(this::isHostSupported)
+                .flatMap(__ -> retrieveByUrlString(urlString));
     }
 
     protected abstract Optional<ProductInfo> retrieveByUrlString(String urlString);

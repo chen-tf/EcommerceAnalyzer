@@ -1,11 +1,16 @@
 package com.timm.ecommerce.analyzer.provider.util;
 
+import static com.timm.ecommerce.analyzer.provider.util.UrlUtils.getHTTPSBaseUrl;
+
 import java.util.Optional;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
+import okhttp3.OkHttpClient;
 import retrofit2.Call;
 import retrofit2.Response;
+import retrofit2.Retrofit;
 
 public final class RetrofitUtils {
 
@@ -21,5 +26,16 @@ public final class RetrofitUtils {
             log.error("failed to execute API.", e);
             return Optional.empty();
         }
+    }
+
+    @NotNull
+    public static <T> T createRetrofitAPIService(OkHttpClient httpClient,
+                                                 String host,
+                                                 Class<T> service) {
+        return new Retrofit.Builder()
+                .baseUrl(getHTTPSBaseUrl(host))
+                .client(httpClient)
+                .build()
+                .create(service);
     }
 }

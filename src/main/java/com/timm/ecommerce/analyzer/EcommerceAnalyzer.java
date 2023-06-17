@@ -3,9 +3,11 @@ package com.timm.ecommerce.analyzer;
 import java.util.List;
 import java.util.Optional;
 
-import com.timm.ecommerce.analyzer.provider.momo.Momo;
 import com.timm.ecommerce.analyzer.provider.ProductInfo;
 import com.timm.ecommerce.analyzer.provider.ProductInfoProvider;
+import com.timm.ecommerce.analyzer.provider.momo.Momo;
+import com.timm.ecommerce.analyzer.provider.momo.MomoDMAPIClient;
+import com.timm.ecommerce.analyzer.provider.momo.MomoMobileAPIClient;
 
 import okhttp3.OkHttpClient;
 
@@ -17,7 +19,8 @@ public class EcommerceAnalyzer {
     public EcommerceAnalyzer() {
         httpClient = new OkHttpClient();
         productInfoProviders = List.of(
-                new Momo(httpClient)
+                new Momo(new MomoDMAPIClient(httpClient),
+                         new MomoMobileAPIClient(httpClient))
         );
     }
 
