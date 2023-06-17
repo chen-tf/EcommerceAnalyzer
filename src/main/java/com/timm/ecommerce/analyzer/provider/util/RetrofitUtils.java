@@ -11,6 +11,7 @@ import okhttp3.OkHttpClient;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
+import retrofit2.converter.scalars.ScalarsConverterFactory;
 
 public final class RetrofitUtils {
 
@@ -29,10 +30,11 @@ public final class RetrofitUtils {
     }
 
     @NotNull
-    public static <T> T createRetrofitAPIService(OkHttpClient httpClient,
-                                                 String host,
-                                                 Class<T> service) {
+    public static <T> T createScalarRetrofitAPIService(OkHttpClient httpClient,
+                                                       String host,
+                                                       Class<T> service) {
         return new Retrofit.Builder()
+                .addConverterFactory(ScalarsConverterFactory.create())
                 .baseUrl(getHTTPSBaseUrl(host))
                 .client(httpClient)
                 .build()

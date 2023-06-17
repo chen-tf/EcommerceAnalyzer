@@ -8,6 +8,8 @@ import com.timm.ecommerce.analyzer.provider.ProductInfoProvider;
 import com.timm.ecommerce.analyzer.provider.momo.Momo;
 import com.timm.ecommerce.analyzer.provider.momo.MomoDMAPIClient;
 import com.timm.ecommerce.analyzer.provider.momo.MomoMobileAPIClient;
+import com.timm.ecommerce.analyzer.provider.pchome.PCAPIClient;
+import com.timm.ecommerce.analyzer.provider.pchome.PCHome;
 
 import okhttp3.OkHttpClient;
 
@@ -20,7 +22,8 @@ public class EcommerceAnalyzer {
         httpClient = new OkHttpClient();
         productInfoProviders = List.of(
                 new Momo(new MomoDMAPIClient(httpClient),
-                         new MomoMobileAPIClient(httpClient))
+                         new MomoMobileAPIClient(httpClient)),
+                new PCHome(new PCAPIClient(httpClient))
         );
     }
 
