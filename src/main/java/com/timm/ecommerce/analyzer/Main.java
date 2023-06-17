@@ -1,4 +1,4 @@
-package com.timm;
+package com.timm.ecommerce.analyzer;
 
 public class Main {
     public static void main(String[] args) {
